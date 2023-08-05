@@ -24,6 +24,16 @@ my_tensors = {
     'v_ovov' : 'Vovov',
     'v_ovvv' : 'Vovvv',
     'v_vvvv' : 'Vvvvv',
+    'v_oovo' : 'Voovo',
+    'v_ovoo' : 'Vovoo',
+    'v_ovvo' : 'Vovvo',
+    'v_vooo' : 'Vvooo',
+    'v_voov' : 'Vvoov',
+    'v_vovo' : 'Vvovo',
+    'v_vovv' : 'Vvovv',
+    'v_vvoo' : 'Vvvoo',
+    'v_vvov' : 'Vvvov',
+    'v_vvvo' : 'Vvvvo',
     'f_oo' : 'fock_oo',
     'f_vv' : 'fock_vv',
     'f_ov' : 'fock_ov',
@@ -61,35 +71,66 @@ def get_what(type_of_info):
     H = fock*pr + Rational(1,4)*V*pqsr
     H
 
-    def get_T():
+    # def get_T():
+    #     i, j = symbols('i,j', below_fermi=True, cls=Dummy)
+    #     a, b = symbols('a,b', above_fermi=True, cls=Dummy)
+    #     t_ai = AntiSymmetricTensor('t', (a,), (i,))*NO(Fd(a)*F(i))
+    #     t_abij = Rational(1,4)*AntiSymmetricTensor('t', (a,b), (i,j))*NO(Fd(a)*Fd(b)*F(j)*F(i))
+    #     return t_ai + t_abij
+
+    # get_T()
+    
+    # Building the T amplitudes, T1 and T2 are made in the conventional way whereas we use a T2 decomposition for T3
+    def get_T1():
         i, j = symbols('i,j', below_fermi=True, cls=Dummy)
         a, b = symbols('a,b', above_fermi=True, cls=Dummy)
-        t_ai = AntiSymmetricTensor('t', (a,), (i,))*NO(Fd(a)*F(i))
-        t_abij = Rational(1,4)*AntiSymmetricTensor('t', (a,b), (i,j))*NO(Fd(a)*Fd(b)*F(j)*F(i))
-        return t_ai + t_abij
+        t1 = AntiSymmetricTensor('t', (a,), (i,))*NO(Fd(a)*F(i))
+        return t1
+    
+    def get_T2():
+        i, j = symbols('i,j', below_fermi=True, cls=Dummy)
+        a, b = symbols('a,b', above_fermi=True, cls=Dummy)
+        t2 = Rational(1,4)*AntiSymmetricTensor('t', (a,b), (i,j))*NO(Fd(a)*Fd(b)*F(j)*F(i))
+        return t2
 
-    get_T()
+    # Building one of the T2 like intermediates for T3
+    def get_S():
+        i, j, k,l = symbols('i,j,k,l', below_fermi=True, cls=Dummy)
+        a, b, c, d = symbols('a,b,c,d', above_fermi=True, cls=Dummy)
+        s_vooo = AntiSymmetricTensor('s', (a,l), (i,j))*NO(Fd(a)*Fd(l)*F(j)*F(i))
+        s_vvvo = AntiSymmetricTensor('s', (a,b), (i,d))*NO(Fd(a)*Fd(b)*F(d)*F(i))
+        return s_vooo, s_vvvo
+    
+    def get_ST():
+        s_vooo, s_vvvo = get_S()
+        t2 = get_T2()
+        C = Commutator
+        tmp = wicks(C(s_vooo, t2)) + wicks(C(s_vvvo, t2))
+        tmp = evaluate_deltas(tmp)
+        tmp = substitute_dummies(tmp, new_indices=True, pretty_indices = pretty_dummies_dict)
+        return tmp
+
 
     C = Commutator
-    T = get_T()
+    T = get_T1() + get_T2() + get_ST()
     print("commutator 1...")
     comm1 = wicks(C(H, T))
     comm1 = evaluate_deltas(comm1)
     comm1 = substitute_dummies(comm1)
 
-    T = get_T()
+    T = get_T1() + get_T2() + get_ST()
     print("commutator 2...")
     comm2 = wicks(C(comm1, T))
     comm2 = evaluate_deltas(comm2)
     comm2 = substitute_dummies(comm2)
 
-    T = get_T()
+    T = get_T1() + get_T2() + get_ST()
     print("commutator 3...")
     comm3 = wicks(C(comm2, T))
     comm3 = evaluate_deltas(comm3)
     comm3 = substitute_dummies(comm3)
 
-    T = get_T()
+    T = get_T1() + get_T2() + get_ST()
     print("commutator 4...")
     comm4 = wicks(C(comm3, T))
     comm4 = evaluate_deltas(comm4)
@@ -177,6 +218,41 @@ def find_tensor(splitted_out):
     for term in splitted_out:
         tensor.append(term[1])
     return tensor
+
+def equivalent_form(eri):
+    eq_forms = []
+    eq_forms.append(eri[0] + eri[1] + eri[2] + eri[3])
+    eq_forms.append(eri[1] + eri[0] + eri[3] + eri[2])
+    eq_forms.append(eri[2] + eri[3] + eri[0] + eri[1])
+    eq_forms.append(eri[3] + eri[2] + eri[1] + eri[0])
+    eq_forms.append(eri[2] + eri[1] + eri[0] + eri[3])
+    eq_forms.append(eri[3] + eri[0] + eri[1] + eri[2])
+    eq_forms.append(eri[0] + eri[3] + eri[2] + eri[1])
+    eq_forms.append(eri[1] + eri[2] + eri[3] + eri[0])
+    
+    space_eq = []
+    for t in eq_forms:
+        flag = ''
+        if t[0] <= 'h':
+            flag += 'v'
+        else:
+            flag += 'o'
+        if t[1] <= 'h':
+            flag += 'v'
+        else:
+            flag += 'o'
+        if t[2] <= 'h':
+            flag += 'v'
+        else:
+            flag += 'o'
+        if t[3] <= 'h':
+            flag += 'v'
+        else:
+            flag += 'o'
+        space_eq.append(flag)
+            
+            
+    return eq_forms, space_eq
 
 def create_intermediate(indices, tensor, num, splitted_out):
     mid_1 = int(len(indices[0])/2)
