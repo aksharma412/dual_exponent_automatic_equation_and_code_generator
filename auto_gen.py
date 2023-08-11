@@ -152,6 +152,7 @@ def get_what(type_of_info):
     
     eqT2 = wicks(NO(Fd(i)*Fd(j)*F(b)*F(a))*eq, simplify_dummies=True, 
                  keep_only_fully_contracted=True, simplify_kronecker_deltas=True)
+    
     if type_of_info == 'energy':
         return energy   
     elif type_of_info == 'eqT1':
@@ -250,9 +251,12 @@ def equivalent_form(eri):
         else:
             flag += 'o'
         space_eq.append(flag)
+        
+    equivalent_tensor_with_space = []
+    for l in range(len(space_eq)):
+        equivalent_tensor_with_space = eq_forms[l] + space_eq[l]
             
-            
-    return eq_forms, space_eq
+    return equivalent_tensor_with_space
 
 def create_intermediate(indices, tensor, num, splitted_out):
     mid_1 = int(len(indices[0])/2)
@@ -335,7 +339,11 @@ while inp != '0':
             #flag += 1
             
         for k in range(len(tensor)):
+            intmdt = []
             tensor[k] = tensor[k] + '_' + space[k]
+            if tensor[k][0] == 's' or tensor[k][0] == 'v':
+                intmdt = equivalent_form(tensor[k])
+                
         #print(tensor)
         
         if len(rank) == 2:
