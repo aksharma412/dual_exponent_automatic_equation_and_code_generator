@@ -276,86 +276,97 @@ def print_einsum_with_int_out(indices, tensor, phase, number, name, tar):
 
 
 #print("hi")
-equation = input("Please enter the type of equation to be converted to code. eg energy, eqT1 or eqT2 :: ")
+equation = input("Please enter the type of equation to be converted to code. eg energy, eqT1 or eqT2. Or enter 0 to exit :: ")
 inp = get_what(equation)
-if equation == 'energy':
-    name = 'energy'
-elif equation == 'eqT1':
-    name = 'T1'
-elif equation == 'eqT2':
-    name = 'T2'
-else:
-    raise NameError("Doesnt belong to any equation type mentioned")
-tot_len = len(inp.args)
-lis = []
-for i in inp.args:
-    out = re.sub('\\\\frac{(.+?)}{(\d+?)}', '(1/\\2)*\\1', latex(i))
-    out = re.sub('{(\w+?)}_{(\w+?)}', '(\\1,\\2)', out)
-    lis.append(out)
-    if out[0] == '+' or out[0] == '-':
-        phase = out[0]
-        out = out[2:]
+while inp != '0':
+    if equation == 'energy':
+        name = 'energy'
+    elif equation == 'eqT1':
+        name = 'T1'
+    elif equation == 'eqT2':
+        name = 'T2'
     else:
-        phase = '+'
+        raise NameError("Doesnt belong to any equation type mentioned")
+    tot_len = len(inp.args)
+    lis = []
+    for i in inp.args:
+        out = re.sub('\\\\frac{(.+?)}{(\d+?)}', '(1/\\2)*\\1', latex(i))
+        out = re.sub('{(\w+?)}_{(\w+?)}', '(\\1,\\2)', out)
+        lis.append(out)
+        if out[0] == '+' or out[0] == '-':
+            phase = out[0]
+            out = out[2:]
+        else:
+            phase = '+'
+        
     
-
-    splitted_out = out.split()
-    #if len(splitted_out<=2):
-     
-        #continue
-    #else:
-    rank = []
-    space = []
-    indices = []
-    tensor = []
-    
-    #print("here")
-    
-    if '*' in splitted_out[0]:
-        number = splitted_out[0].split('*')[0]
-        splitted_out[0] = splitted_out[0].split('*')[1]
+        splitted_out = out.split()
+        #if len(splitted_out<=2):
+         
+            #continue
+        #else:
+        rank = []
+        space = []
+        indices = []
+        tensor = []
+        
+        #print("here")
+        
+        if '*' in splitted_out[0]:
+            number = splitted_out[0].split('*')[0]
+            splitted_out[0] = splitted_out[0].split('*')[1]
+        else:
+            number = 1
+        
+        rank = calc_rank(splitted_out)
+        #print(rank)
+        tensor = find_tensor(splitted_out)
+        space = space_identifier(splitted_out, tensor)
+        #print(space)
+        indices = indices_contracting(splitted_out)
+        #print(indices)
+        
+            
+            # rank.append(calc_rank(splitted_out[flag]))
+            # space.append(space_identifier(splitted_out[flag]))
+            # indices.append(indices_contracting(splitted_out[flag]))
+            # tensor.append(find_tensor(splitted_out[flag]))
+            
+            #flag += 1
+            
+        for k in range(len(tensor)):
+            tensor[k] = tensor[k] + '_' + space[k]
+        #print(tensor)
+        
+        if len(rank) == 2:
+            print_einsum_out(indices, tensor, phase, number, name)
+         
+        if len(rank) > 2:
+            var_1 = len(rank)
+            num = 1
+            while var_1 > 1:
+                if len(indices) == 2:
+                    print_einsum_out(indices, tensor, phase, number, name)
+                    # for foo in tensor:
+                    #     if 'I' in foo:
+                    #         print_einsum_with_int_in_left(indices, tensor, phase, number, name = 'ener', tar = f"I{num}")
+                    #     else:
+                    #         print_einsum_out(indices, tensor, phase, number, name='ener')
+                    break
+                print_einsum_with_int_out(indices, tensor, phase, number, name, tar = f'I{num}')
+                create_intermediate(indices, tensor, num, splitted_out)
+                num += 1
+                var_1 -= 1
+    repeat = input("Want to continue ? (Please enter y/n) :: ")  
+    if repeat == 'y':
+        equation = input("Please enter the type of equation to be converted to code. eg energy, eqT1 or eqT2. Or enter 0 to exit :: ")
+        inp = get_what(equation)
+    elif repeat == 'n':
+        inp = '0'
     else:
-        number = 1
+        raise NameError("Please enter a valid option!")         
+                
     
-    rank = calc_rank(splitted_out)
-    #print(rank)
-    tensor = find_tensor(splitted_out)
-    space = space_identifier(splitted_out, tensor)
-    #print(space)
-    indices = indices_contracting(splitted_out)
-    #print(indices)
-    
-        
-        # rank.append(calc_rank(splitted_out[flag]))
-        # space.append(space_identifier(splitted_out[flag]))
-        # indices.append(indices_contracting(splitted_out[flag]))
-        # tensor.append(find_tensor(splitted_out[flag]))
-        
-        #flag += 1
-        
-    for k in range(len(tensor)):
-        tensor[k] = tensor[k] + '_' + space[k]
-    #print(tensor)
-    
-    if len(rank) == 2:
-        print_einsum_out(indices, tensor, phase, number, name)
-     
-    if len(rank) > 2:
-        var_1 = len(rank)
-        num = 1
-        while var_1 > 1:
-            if len(indices) == 2:
-                print_einsum_out(indices, tensor, phase, number, name)
-                # for foo in tensor:
-                #     if 'I' in foo:
-                #         print_einsum_with_int_in_left(indices, tensor, phase, number, name = 'ener', tar = f"I{num}")
-                #     else:
-                #         print_einsum_out(indices, tensor, phase, number, name='ener')
-                break
-            print_einsum_with_int_out(indices, tensor, phase, number, name, tar = f'I{num}')
-            create_intermediate(indices, tensor, num, splitted_out)
-            num += 1
-            var_1 -= 1
             
             
         
