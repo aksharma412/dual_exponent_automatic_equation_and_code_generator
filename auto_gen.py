@@ -12,6 +12,7 @@ from sympy.physics.secondquant import (AntiSymmetricTensor, wicks,
         F, Fd, NO, evaluate_deltas, substitute_dummies, Commutator,
         simplify_index_permutations, PermutationOperator)
 
+standard = ['oooo', 'ooov', 'oovv', 'ovov', 'ovvv', 'vvvv']
 
 my_tensors = {
     't_oovv' : 'T2',
@@ -24,16 +25,6 @@ my_tensors = {
     'v_ovov' : 'Vovov',
     'v_ovvv' : 'Vovvv',
     'v_vvvv' : 'Vvvvv',
-    'v_oovo' : 'Voovo',
-    'v_ovoo' : 'Vovoo',
-    'v_ovvo' : 'Vovvo',
-    'v_vooo' : 'Vvooo',
-    'v_voov' : 'Vvoov',
-    'v_vovo' : 'Vvovo',
-    'v_vovv' : 'Vvovv',
-    'v_vvoo' : 'Vvvoo',
-    'v_vvov' : 'Vvvov',
-    'v_vvvo' : 'Vvvvo',
     'f_oo' : 'fock_oo',
     'f_vv' : 'fock_vv',
     'f_ov' : 'fock_ov',
