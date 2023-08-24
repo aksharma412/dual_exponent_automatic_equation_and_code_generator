@@ -49,19 +49,21 @@ target = {
 
 
 # function containing code to generate the equations. uses sympy.secondquant
-def get_what(type_of_info):
+def get_what():
     pretty_dummies_dict = {
         'above': 'cdefgh',
         'below': 'klmno',
         'general': 'pqrstu'
     }
-
+    
+    # define the symbols required to construct the hamiltonian
     i = symbols('i', below_fermi=True, cls=Dummy)
     a = symbols('a', above_fermi=True, cls=Dummy)
     j = symbols('j', below_fermi=True, cls=Dummy)
     b = symbols('b', above_fermi=True, cls=Dummy)
     p, q, r, s = symbols('p,q,r,s', cls=Dummy)
 
+    # build the hamiltonian - f+V
     fock = AntiSymmetricTensor('f', (p,), (q,))
     pr = NO(Fd(p)*F(q))
     V = AntiSymmetricTensor('v',(p,q),(r,s))
@@ -99,6 +101,7 @@ def get_what(type_of_info):
         s_vvvo = AntiSymmetricTensor('s', (a,b), (i,d))*NO(Fd(a)*Fd(b)*F(d)*F(i))
         return s_vooo, s_vvvo
     
+    # building the T3 like term using the intermediate defined above
     def get_ST():
         s_vooo, s_vvvo = get_S()
         t2 = get_T2()
@@ -108,7 +111,7 @@ def get_what(type_of_info):
         tmp = substitute_dummies(tmp, new_indices=True, pretty_indices = pretty_dummies_dict)
         return tmp
 
-
+    # Carrying out the BCH expansion, truncated at fourth commutator
     C = Commutator
     T = get_T1() + get_T2() + get_ST()
     print("commutator 1...")
@@ -134,31 +137,40 @@ def get_what(type_of_info):
     comm4 = evaluate_deltas(comm4)
     comm4 = substitute_dummies(comm4)
 
+    # simplifying the bch expansion by substituting dummies
     eq = H + comm1 + comm2/2 + comm3/6 + comm4/24
     eq = eq.expand()
     eq = evaluate_deltas(eq)
     eq = substitute_dummies(eq, new_indices=True,
             pretty_indices=pretty_dummies_dict)
-
+    
+    # getting the energy equation
     i, j, k, l = symbols('i,j,k,l', below_fermi=True)
     a, b, c, d = symbols('a,b,c,d', above_fermi=True)
     energy = wicks(eq, simplify_dummies=True,
             keep_only_fully_contracted=True)
     
+    # defining the T1 amplitude equation
     eqT1 = wicks(NO(Fd(i)*F(a))*eq, simplify_dummies=True, 
-                 keep_only_fully_contracted=True, simplify_kronecker_deltas=True)
+                  keep_only_fully_contracted=True, simplify_kronecker_deltas=True)
     
+    # defining the T2 amplitude equation
     eqT2 = wicks(NO(Fd(i)*Fd(j)*F(b)*F(a))*eq, simplify_dummies=True, 
-                 keep_only_fully_contracted=True, simplify_kronecker_deltas=True)
+                  keep_only_fully_contracted=True, simplify_kronecker_deltas=True)
     
-    if type_of_info == 'energy':
-        return energy   
-    elif type_of_info == 'eqT1':
-        return eqT1
-    elif type_of_info == 'eqT2':
-        return eqT2
-    else:
-        raise NameError("Enter a valid equation type")            
+    # defining the t3 amplitude equation
+    eqT3 = wicks(NO(Fd(i)*Fd(j)*Fd(k)*F(c)*F(b)*F(a))*eq, simplify_dummies=True, keep_only_fully_contracted=True, simplify_kronecker_deltas=True)
+    
+    return energy, eqT1, eqT2, eqT3
+    
+    # if type_of_info == 'energy':
+    #     return energy   
+    # elif type_of_info == 'eqT1':
+    #     return eqT1
+    # elif type_of_info == 'eqT2':
+    #     return eqT2
+    # else:
+    #     raise NameError("Enter a valid equation type")            
             
             
 def calc_rank(splitted_out):
@@ -284,19 +296,33 @@ def print_einsum_with_int_out(indices, tensor, phase, number, name, tar):
     print(f"{name} {phase}= {number}*np.einsum('{indices[0]}, {indices[1]} -> {tar}', {my_tensors[tensor[0]]}, {my_tensors[tensor[1]]}, optimize = 'optimal')")
     
 
-
-#print("hi")
+input_list = []
 equation = input("Please enter the type of equation to be converted to code. eg energy, eqT1 or eqT2. Or enter 0 to exit :: ")
-inp = get_what(equation)
-while inp != '0':
+input_list = get_what()
+while equation != '0':
+    
     if equation == 'energy':
         name = 'energy'
-    elif equation == 'eqT1':
+        inp = input_list[0]
+    elif equation == "eqT1":
         name = 'T1'
+        inp = input_list[1]
     elif equation == 'eqT2':
         name = 'T2'
-    else:
-        raise NameError("Doesnt belong to any equation type mentioned")
+        inp = input_list[2]
+    elif equation == 'eqT3':
+        name = 'T3'
+        inp = input_list[3]
+        
+# while inp != '0':
+#     if equation == 'energy':
+#         name = 'energy'
+#     elif equation == 'eqT1':
+#         name = 'T1'
+#     elif equation == 'eqT2':
+#         name = 'T2'
+#     else:
+#         raise NameError("Doesnt belong to any equation type mentioned")
     tot_len = len(inp.args)
     lis = []
     for i in inp.args:
@@ -325,6 +351,12 @@ while inp != '0':
         if '*' in splitted_out[0]:
             number = splitted_out[0].split('*')[0]
             splitted_out[0] = splitted_out[0].split('*')[1]
+        if  splitted_out[0] == '2':
+            number = splitted_out[0]
+            splitted_out = splitted_out[1:]
+        # if type(int(splitted_out[0])) == int:
+        #     number = splitted_out[0]
+        #     splitted_out = splitted_out[1:]
         else:
             number = 1
         
@@ -411,9 +443,9 @@ while inp != '0':
     repeat = input("Want to continue ? (Please enter y/n) :: ")  
     if repeat == 'y':
         equation = input("Please enter the type of equation to be converted to code. eg energy, eqT1 or eqT2. Or enter 0 to exit :: ")
-        inp = get_what(equation)
+        
     elif repeat == 'n':
-        inp = '0'
+        eqaution = '0'
     else:
         raise NameError("Please enter a valid option!")         
                 
